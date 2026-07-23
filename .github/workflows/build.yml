@@ -13,8 +13,11 @@ concurrency:
 env:
   PACKAGE_NAME: luci-app-uugamebooster
   PACKAGE_DIR: luci-app-uugamebooster
-  # 指定目标架构
-  TARGET_ARCH: aarch64_cortex-a53
+  # 指定源码分支
+  REPO_BRANCH: openwrt-25.12
+  # 指定目标平台和子目标
+  TARGET_SYSTEM: mediatek
+  SUBTARGET: filogic
 
 permissions:
   contents: write
@@ -38,23 +41,24 @@ jobs:
         run: |
           git clone -b openwrt-25.12 --single-branch https://github.com/openwrt/openwrt.git openwrt-25.12
 
+      - name: 复制软件包源码
+        run: |
+          mkdir -p openwrt-25.12/package/${PACKAGE_NAME}
+          cp -a "${PACKAGE_DIR}/." "openwrt-25.12/package/${PACKAGE_NAME}/"
+
       - name: 更新并安装 Feeds
         run: |
           cd openwrt-25.12
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: 复制软件包源码
-        run: |
-          mkdir -p openwrt-25.12/package/${PACKAGE_NAME}
-          cp -a "${PACKAGE_DIR}/." "openwrt-25.12/package/${PACKAGE_NAME}/"
-
       - name: 配置编译环境
         run: |
           cd openwrt-25.12
           # 创建基础配置，选择目标架构
-          echo "CONFIG_TARGET_armsr=y" >> .config
-          echo "CONFIG_TARGET_armsr_armv8=y" >> .config
+          # 关键点：选择 mediatek 平台和 filogic 子目标
+          echo "CONFIG_TARGET_${{ env.TARGET_SYSTEM }}=y" > .config
+          echo "CONFIG_TARGET_${{ env.TARGET_SYSTEM }}_${{ env.SUBTARGET }}=y" >> .config
           # 选中要编译的软件包
           echo "CONFIG_PACKAGE_${PACKAGE_NAME}=m" >> .config
           # 生成最终配置
